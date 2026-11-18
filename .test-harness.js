@@ -32,6 +32,7 @@ class FakeEl {
   addEventListener(type, fn) { (this.handlers[type] ||= []).push(fn); }
   getContext() { return ctx; }
   querySelectorAll() { return []; }
+  querySelector() { return null; }
   closest() { return null; }
   blur() {}
 }
@@ -56,7 +57,11 @@ const sandbox = {
     activeElement: { blur() {} },
     addEventListener(type, fn) { (listeners[type] ||= []).push(fn); }
   },
-  localStorage: { getItem() { return null; }, setItem() {} },
+  localStorage: {
+    _data: new Map(),
+    getItem(k) { return this._data.has(k) ? this._data.get(k) : null; },
+    setItem(k, v) { this._data.set(k, String(v)); }
+  },
   performance: { now: () => now },
   requestAnimationFrame() {},
   console,
@@ -92,6 +97,14 @@ vm.runInContext(code, sandbox, { filename: 'game-bundle.js' });
 for (const fn of listeners.DOMContentLoaded || []) fn();
 const game = windowObj.game;
 if (!game) throw new Error('Game did not initialize');
+
+const profileName = { value: '', focus() {}, select() {} };
+const profileRegion = { value: 'na' };
+overlay.querySelector = (sel) => {
+  if (sel === '#player-name') return profileName;
+  if (sel === '#player-region') return profileRegion;
+  return null;
+};
 
 function step(seconds, fn) {
   const frames = Math.round(seconds * 60);
@@ -314,4 +327,25 @@ console.log(process.exitCode ? 'SOME TESTS FAILED' : 'ALL TESTS PASSED');
 
 console.log('BAD DRAW CALLS', badDraws.length, JSON.stringify(badDraws, null, 2));
 check('no non-finite draw coordinates', badDraws.length === 0);
+console.log(process.exitCode ? 'SOME TESTS FAILED' : 'ALL TESTS PASSED');
+
+// ---------------- profile / region ----------------
+game.showTitle();
+game.showProfile();
+check('profile screen opens', game.state === 'profile', game.state);
+check('profile form rendered', overlay.innerHTML.includes('profile-form'));
+profileName.value = '  luigi  ';
+profileRegion.value = 'eu';
+game.submitProfile();
+check('name normalized', game.playerName === 'LUIGI', game.playerName);
+check('region selected', game.region.id === 'eu', game.region.id);
+check('profile starts game', game.state === 'intro', game.state);
+const storedProfile = JSON.parse(sandbox.localStorage.getItem('mario-browser-profile') || '{}');
+check('profile persisted', storedProfile.name === 'LUIGI' && storedProfile.regionId === 'eu', storedProfile);
+game.score = 1234;
+game.saveBest();
+check('region best saved', game.loadBest() === 1234 && sandbox.localStorage.getItem('mario-browser-best-eu') === '1234', game.loadBest());
+check('empty name fallback', game.cleanName('   ') === 'MARIO');
+check('name max length', game.cleanName('abcdefghijklmnop').length === 12);
+check('name strips angle brackets', !game.cleanName('<b>BOB</b>').includes('<'));
 console.log(process.exitCode ? 'SOME TESTS FAILED' : 'ALL TESTS PASSED');

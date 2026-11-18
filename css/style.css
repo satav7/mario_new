@@ -292,6 +292,91 @@ kbd {
   color: #ffd23f;
 }
 
+.profile-line {
+  margin: 12px 0 0;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #9ecbff;
+}
+
+.profile-line strong {
+  color: #ffd23f;
+}
+
+/* --------------------------- profile setup ---------------------------- */
+
+.profile-panel {
+  width: min(500px, 100%);
+}
+
+.field {
+  display: block;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.field > span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: #9ecbff;
+  text-transform: uppercase;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #3c5179;
+  border-radius: 8px;
+  background: #0a1220;
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  letter-spacing: 2px;
+  outline: none;
+  color-scheme: dark;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input {
+  text-transform: uppercase;
+}
+
+.field input::placeholder {
+  color: #5b6d90;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: #ffcd38;
+  box-shadow: 0 0 0 3px rgba(255, 205, 56, 0.18), inset 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.field select {
+  cursor: pointer;
+}
+
+.field select option {
+  background: #0a1220;
+  color: #fff;
+}
+
+.profile-panel .btn {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.profile-panel .btn.ghost {
+  margin-top: 6px;
+  padding: 8px 20px;
+  min-width: 0;
+  font-size: 11px;
+}
+
 .tiny {
   margin: 14px 0 0;
   font-size: 10px;

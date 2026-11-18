@@ -8,6 +8,23 @@ window.M = window.M || {};
   const VIEW_W = M.VIEW_W;
   const SOLID = new Set(['#', 'B', '?', 'U', 'S', 'P']);
 
+  const REGIONS = [
+    { id: 'na', label: 'North America', short: 'N. AMERICA' },
+    { id: 'sa', label: 'South America', short: 'S. AMERICA' },
+    { id: 'eu', label: 'Europe', short: 'EUROPE' },
+    { id: 'af', label: 'Africa', short: 'AFRICA' },
+    { id: 'as', label: 'Asia', short: 'ASIA' },
+    { id: 'me', label: 'Middle East', short: 'MIDDLE EAST' },
+    { id: 'oc', label: 'Oceania', short: 'OCEANIA' }
+  ];
+  M.REGIONS = REGIONS;
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+  }
+
   class Game {
     constructor(canvas) {
       this.canvas = canvas;
@@ -35,6 +52,10 @@ window.M = window.M || {};
       this.shake = 0;
       this.muted = false;
       this.touchHidden = null;
+
+      this.playerName = 'MARIO';
+      this.region = REGIONS[0];
+      this.loadProfile();
 
       this.entities = [];
       this.particles = [];
@@ -154,18 +175,25 @@ window.M = window.M || {};
       }
 
       if (this.state !== 'playing' && this.state !== 'paused' &&
+          this.state !== 'title' && this.state !== 'profile' &&
           (this.input.pressed('start') || this.input.pressed('jump'))) {
-        if (this.state === 'title') this.startGame();
-        else if (this.state === 'levelcomplete') this.nextLevel();
+        if (this.state === 'levelcomplete') this.nextLevel();
         else if (this.state === 'gameover' || this.state === 'victory') this.startGame();
       }
 
       switch (this.state) {
-        case 'title': {
+        case 'title':
+        case 'profile': {
           this.titleT += dt;
           this.gameTime += dt;
           this.camera.x = (0.5 - 0.5 * Math.cos(this.titleT * 0.12)) *
             Math.max(0, this.level.width * T - VIEW_W);
+          if (this.state === 'profile') {
+            if (this.input.pressed('pause')) this.showTitle();
+            else if (this.input.pressed('start')) this.submitProfile();
+          } else if (this.input.pressed('start') || this.input.pressed('jump')) {
+            this.showProfile();
+          }
           break;
         }
         case 'intro': {
@@ -589,6 +617,8 @@ window.M = window.M || {};
     startGame() {
       this.audio.ensure();
       this.audio.setMuted(this.muted);
+      this.input.down.clear();
+      this.input.just.clear();
       this.score = 0;
       this.coins = 0;
       this.lives = 3;
@@ -684,6 +714,7 @@ window.M = window.M || {};
           <p class="eyebrow">A FAN-MADE BROWSER TRIBUTE</p>
           <h1 class="logo"><span>SUPER</span>MARIO</h1>
           <p class="logo-sub">PIXEL ADVENTURE</p>
+          <p class="profile-line">PLAYER <strong>${escapeHtml(this.playerName)}</strong> · ${escapeHtml(this.region.label)}</p>
           <button class="btn primary" data-action="start">▶ START GAME</button>
           <div class="controls-grid">
             <div><kbd>←</kbd><kbd>→</kbd><span>Move</span></div>
@@ -693,10 +724,122 @@ window.M = window.M || {};
             <div><kbd>P</kbd><span>Pause</span></div>
             <div><kbd>M</kbd><span>Mute</span></div>
           </div>
-          <p class="best">BEST ${M.fmtScore(best)}</p>
+          <p class="best">${escapeHtml(this.region.short)} BEST ${M.fmtScore(best)}</p>
         </div>
       `);
       this.syncTouch();
+    }
+
+    showProfile() {
+      this.state = 'profile';
+      this.audio.stopMusic();
+      const options = REGIONS.map((r) =>
+        `<option value="${r.id}"${r.id === this.region.id ? ' selected' : ''}>${escapeHtml(r.label)}</option>`
+      ).join('');
+
+      this.showOverlay(`
+        <form id="profile-form" class="panel profile-panel" autocomplete="off">
+          <p class="eyebrow">PLAYER SETUP</p>
+          <h2>WHO'S PLAYING?</h2>
+          <label class="field">
+            <span>Player name</span>
+            <input id="player-name" name="playerName" type="text" maxlength="12"
+              value="${escapeHtml(this.playerName)}" placeholder="MARIO"
+              spellcheck="false" autocomplete="off" autocapitalize="characters" />
+          </label>
+          <label class="field">
+            <span>Region</span>
+            <select id="player-region" name="playerRegion">${options}</select>
+          </label>
+          <button class="btn primary" type="submit">START ADVENTURE ▶</button>
+          <button class="btn ghost" type="button" data-action="back">BACK TO TITLE</button>
+          <p class="tiny">Your name and region are saved on this device.</p>
+        </form>
+      `);
+
+      setTimeout(() => {
+        const el = this.overlay.querySelector('#player-name');
+        if (el) {
+          el.focus();
+          if (el.select) el.select();
+        }
+      }, 40);
+
+      const form = this.overlay.querySelector('#profile-form');
+      if (form) {
+        form.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            this.showTitle();
+          }
+        });
+      }
+      this.syncTouch();
+    }
+
+    submitProfile() {
+      const nameInput = this.overlay.querySelector('#player-name');
+      const regionSelect = this.overlay.querySelector('#player-region');
+      this.playerName = this.cleanName(nameInput ? nameInput.value : this.playerName);
+      if (regionSelect) {
+        const next = REGIONS.find((r) => r.id === regionSelect.value);
+        if (next) this.region = next;
+      }
+      this.saveProfile();
+      this.startGame();
+    }
+
+    cleanName(raw) {
+      return String(raw == null ? '' : raw)
+        .replace(/[\u0000-\u001f<>]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 12)
+        .toUpperCase() || 'MARIO';
+    }
+
+    loadProfile() {
+      let saved = null;
+      try {
+        const raw = localStorage.getItem('mario-browser-profile');
+        if (raw) saved = JSON.parse(raw);
+      } catch (err) {
+        saved = null;
+      }
+
+      if (saved && typeof saved.name === 'string') {
+        this.playerName = this.cleanName(saved.name);
+      }
+      let region = saved && REGIONS.find((r) => r.id === saved.regionId);
+      if (!region) region = REGIONS.find((r) => r.id === this.detectRegion());
+      this.region = region || REGIONS[0];
+    }
+
+    saveProfile() {
+      try {
+        localStorage.setItem('mario-browser-profile', JSON.stringify({
+          name: this.playerName,
+          regionId: this.region.id
+        }));
+      } catch (err) { /* storage may be unavailable */ }
+    }
+
+    detectRegion() {
+      let lang = 'en-us';
+      try {
+        if (typeof navigator !== 'undefined' && navigator.language) {
+          lang = String(navigator.language).toLowerCase();
+        }
+      } catch (err) { /* ignore */ }
+
+      if (/^(en-us|en-ca|es-mx|fr-ca)/.test(lang)) return 'na';
+      if (/^(pt-br|es-ar|es-cl|es-co|es-pe|es-ve)/.test(lang)) return 'sa';
+      if (/^(en-au|en-nz)/.test(lang)) return 'oc';
+      if (/^(ar|he|fa|tr|ur)/.test(lang)) return 'me';
+      if (/^(ja|ko|zh|hi|bn|th|vi|id|ms|fil)/.test(lang)) return 'as';
+      if (/^(en-za|sw|am|af)/.test(lang)) return 'af';
+      if (/^(en-gb|en-ie|de|fr|es|it|nl|pt|pl|sv|no|da|fi|cs|el|hu|ro|ru|uk|bg|hr|sr|sk|sl|lt|lv|et)/.test(lang)) return 'eu';
+      return 'na';
     }
 
     showLevelCard() {
@@ -705,7 +848,7 @@ window.M = window.M || {};
         <div class="panel level-card passive">
           <p class="world-label">WORLD</p>
           <h2>${lv.name}</h2>
-          <p class="lives-line">MARIO × ${this.lives}</p>
+          <p class="lives-line">${escapeHtml(this.playerName)} × ${this.lives}</p>
         </div>
       `, { passive: true });
     }
@@ -719,6 +862,7 @@ window.M = window.M || {};
             <button class="btn" data-action="restart">RESTART GAME</button>
             <button class="btn ghost" data-action="menu">TITLE SCREEN</button>
           </div>
+          <p class="tiny">${escapeHtml(this.playerName)} · ${escapeHtml(this.region.label)}</p>
           <p class="tiny">Press P to continue</p>
         </div>
       `);
@@ -741,6 +885,7 @@ window.M = window.M || {};
       this.showOverlay(`
         <div class="panel">
           <h2 class="warn">GAME OVER</h2>
+          <p class="profile-line">${escapeHtml(this.playerName)} · ${escapeHtml(this.region.label)}</p>
           <p class="scoreline">FINAL SCORE <strong>${M.fmtScore(this.score)}</strong></p>
           <p class="scoreline">COINS <strong>${this.coins}</strong></p>
           <button class="btn primary" data-action="restart">PLAY AGAIN</button>
@@ -754,8 +899,9 @@ window.M = window.M || {};
         <div class="panel">
           <p class="eyebrow">ALL WORLDS CLEAR</p>
           <h2 class="win">YOU SAVED THE KINGDOM!</h2>
+          <p class="profile-line">${escapeHtml(this.playerName)} · ${escapeHtml(this.region.label)}</p>
           <p class="scoreline">FINAL SCORE <strong>${M.fmtScore(this.score)}</strong></p>
-          <p class="scoreline">BEST <strong>${M.fmtScore(this.loadBest())}</strong></p>
+          <p class="scoreline">${escapeHtml(this.region.short)} BEST <strong>${M.fmtScore(this.loadBest())}</strong></p>
           <button class="btn primary" data-action="restart">PLAY AGAIN</button>
           <p class="tiny">Thanks for playing!</p>
         </div>
@@ -791,10 +937,18 @@ window.M = window.M || {};
         const action = btn.dataset.action;
         this.blurButtons();
 
-        if (action === 'start' || action === 'restart') this.startGame();
+        if (action === 'start') this.showProfile();
+        else if (action === 'restart') this.startGame();
         else if (action === 'resume') this.togglePause();
         else if (action === 'next') this.nextLevel();
-        else if (action === 'menu') this.showTitle();
+        else if (action === 'menu' || action === 'back') this.showTitle();
+      });
+
+      this.overlay.addEventListener('submit', (e) => {
+        if (!e.target || e.target.id !== 'profile-form') return;
+        e.preventDefault();
+        this.audio.ensure();
+        this.submitProfile();
       });
 
       if (this.touch) {
@@ -833,9 +987,13 @@ window.M = window.M || {};
       }
     }
 
-    loadBest() {
+    bestKey(regionId) {
+      return 'mario-browser-best-' + (regionId || (this.region ? this.region.id : 'na'));
+    }
+
+    loadBest(regionId) {
       try {
-        return parseInt(localStorage.getItem('mario-browser-best') || '0', 10) || 0;
+        return parseInt(localStorage.getItem(this.bestKey(regionId)) || '0', 10) || 0;
       } catch (err) {
         return 0;
       }
@@ -844,7 +1002,7 @@ window.M = window.M || {};
     saveBest() {
       try {
         if (this.score > this.loadBest()) {
-          localStorage.setItem('mario-browser-best', String(Math.floor(this.score)));
+          localStorage.setItem(this.bestKey(), String(Math.floor(this.score)));
         }
       } catch (err) { /* ignore */ }
     }

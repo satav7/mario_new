@@ -944,7 +944,8 @@ window.M = window.M || {};
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, VIEW_W, 52);
 
-    label(ctx, 'MARIO', 20, 22, 'left', 13, '#ffe9a8');
+    const playerName = (game.playerName || 'MARIO').slice(0, 12);
+    label(ctx, playerName, 20, 22, 'left', 13, '#ffe9a8');
     label(ctx, M.fmtScore(game.score), 20, 42, 'left', 17);
 
     // coin icon
@@ -965,10 +966,17 @@ window.M = window.M || {};
     label(ctx, 'LIVES', 610, 22, 'left', 13, '#ffe9a8');
     label(ctx, '×' + game.lives, 616, 42, 'left', 17);
 
-    if (game.muted) {
-      label(ctx, 'MUTED', VIEW_W - 22, 24, 'right', 13, '#ffb3b3');
-    }
-    label(ctx, 'P PAUSE', VIEW_W - 22, 42, 'right', 12, 'rgba(255,255,255,0.65)');
+    const region = game.region ? game.region.short : 'GLOBAL';
+    label(ctx, region, VIEW_W - 22, 22, 'right', 11, '#ffe9a8');
+    label(
+      ctx,
+      game.muted ? 'MUTED' : 'P PAUSE',
+      VIEW_W - 22,
+      42,
+      'right',
+      12,
+      game.muted ? '#ffb3b3' : 'rgba(255,255,255,0.65)'
+    );
 
     ctx.restore();
   }

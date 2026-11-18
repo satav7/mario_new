@@ -62,7 +62,10 @@ window.M = window.M || {};
         KeyR: 'restart'
       };
 
+      const isFormField = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA');
+
       target.addEventListener('keydown', (e) => {
+        if (isFormField(e.target)) return;
         const action = this.keyMap[e.code];
         if (!action) return;
         e.preventDefault();
@@ -73,6 +76,7 @@ window.M = window.M || {};
       }, { passive: false });
 
       target.addEventListener('keyup', (e) => {
+        if (isFormField(e.target)) return;
         const action = this.keyMap[e.code];
         if (!action) return;
         e.preventDefault();
