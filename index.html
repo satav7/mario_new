@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0b0f18" />
+  <title>Super Mario — Pixel Adventure</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-shell">
+    <div id="stage">
+      <canvas id="game" width="960" height="480" aria-label="Super Mario pixel adventure game"></canvas>
+
+      <div id="overlay" class="overlay"></div>
+
+      <div id="touch-controls" class="hidden" aria-hidden="true">
+        <div class="pad left">
+          <button type="button" data-key="left" aria-label="Move left">◀</button>
+          <button type="button" data-key="right" aria-label="Move right">▶</button>
+        </div>
+        <div class="pad right">
+          <button type="button" data-key="fire" class="small" aria-label="Throw fireball">B</button>
+          <button type="button" data-key="run" class="small" aria-label="Run">A</button>
+          <button type="button" data-key="jump" class="jump" aria-label="Jump">JUMP</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">
+      <span>← → / A D</span> move
+      <span>SPACE</span> jump
+      <span>SHIFT</span> run
+      <span>X</span> fireball
+      <span>P</span> pause
+      <span>M</span> mute
+    </p>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
